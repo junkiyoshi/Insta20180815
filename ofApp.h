@@ -24,8 +24,6 @@ public:
 	ofxBox2d box2d;
 	float range;
 	float radius; 
-	int font_size;
-	ofTrueTypeFont font;
 	vector<shared_ptr<ofxBox2dCircle>> circles;
-	vector<int> near_count;
+	vector<ofColor> circles_color;
 };

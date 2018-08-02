@@ -1,6 +1,5 @@
 #pragma once
 #include "ofMain.h"
-#include "ofxBox2d.h"
 
 class ofApp : public ofBaseApp {
 
@@ -21,9 +20,6 @@ public:
 	void dragEvent(ofDragInfo dragInfo) {};
 	void gotMessage(ofMessage msg) {};
 
-	ofxBox2d box2d;
-	float range;
-	float radius; 
-	vector<shared_ptr<ofxBox2dCircle>> circles;
-	vector<ofColor> circles_color;
+	ofTrueTypeFont font;
+	int font_size;
 };

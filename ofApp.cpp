@@ -2,70 +2,65 @@
 
 //--------------------------------------------------------------
 void ofApp::setup() {
+
 	ofSetFrameRate(60);
 	ofSetWindowTitle("Insta");
 
-	ofBackground(39);
-	ofSetLineWidth(3);
-	ofEnableBlendMode(ofBlendMode::OF_BLENDMODE_ADD);
+	ofBackground(239);
+	ofSetColor(39);
+	ofNoFill();
+	ofSetLineWidth(2);
 
-	this->box2d.init();
-	this->box2d.setGravity(0, 0);
-	this->box2d.createBounds();
-	this->box2d.setFPS(60);
-	this->box2d.registerGrabbing();
-
-	this->radius = 12;
-	this->range = 1000; // I made mistake of value. But I like it.
-
-	for (int i = 0; i < 128; i++) {
-
-		this->circles.push_back(shared_ptr<ofxBox2dCircle>(new ofxBox2dCircle));
-		this->circles.back().get()->setPhysics(0.5, 0.5, 0.1);
-		this->circles.back().get()->setup(this->box2d.getWorld(), ofRandom(ofGetWidth()), ofRandom(ofGetHeight()), this->radius);
-
-		ofColor color;
-		color.setHsb(ofRandom(255), 255, 255);
-		this->circles_color.push_back(color);
-	}
+	this->font_size = 130;
+	this->font.loadFont("fonts/Kazesawa-Bold.ttf", this->font_size, true, true, true);
 }
 
 //--------------------------------------------------------------
 void ofApp::update() {
 
-	for (int i = 0; i < this->circles.size(); i++) {
-
-		for (int j = i + 1; j < this->circles.size(); j++) {
-
-			float distance = this->circles[i]->getPosition().distance(this->circles[j]->getPosition());
-			if (distance < this->range) {
-
-				this->circles[i]->addForce(this->circles[i]->getPosition() - this->circles[j]->getPosition(), ofMap(distance, 0, this->range, 1.2, 0.1));
-				this->circles[j]->addForce(this->circles[j]->getPosition() - this->circles[i]->getPosition(), ofMap(distance, 0, this->range, 1.2, 0.1));
-			}
-		}
-	}
-
-	this->box2d.update();
 }
 
 //--------------------------------------------------------------
 void ofApp::draw() {
 
-	for (int i = 0; i < this->circles.size(); i++) {
-		
-		for (int j = i + 1; j < this->circles.size(); j++) {
+	vector<char> characters = { 'A', 'B', 'C', 'D', 'E',
+								'V', 'W', 'X', 'Y', 'Z'};
+	for (int character_index = 0; character_index < characters.size(); character_index++) {
 
-			float distance = this->circles[i]->getPosition().distance(this->circles[j]->getPosition());
-			if (distance < this->range) {
+		ofPoint location = character_index < 5 ? ofPoint(ofGetWidth() * 0.25, this->font_size * 0.7 + (this->font_size + 3) * character_index) : ofPoint(ofGetWidth() * 0.75, this->font_size * 0.7 + (this->font_size + 3) * (character_index - 5));
+		ofPushMatrix();
+		ofTranslate(location);
 
-				ofSetColor(this->circles_color[i], 10);
-				ofDrawLine(this->circles[i]->getPosition(), this->circles[j]->getPosition());
+		ofPath path = this->font.getCharacterAsPoints(characters[character_index], true, false);
+		vector<ofPolyline> outline = path.getOutline();
 
-				ofSetColor(this->circles_color[j], 10);
-				ofDrawLine(this->circles[i]->getPosition(), this->circles[j]->getPosition());
+		ofBeginShape();
+		for (int outline_index = 0; outline_index < (int)outline.size(); outline_index++) {
+
+			if (outline_index != 0) { ofNextContour(true); }
+
+			outline[outline_index] = outline[outline_index].getResampledByCount(180);
+			vector<glm::vec3> vertices = outline[outline_index].getVertices();
+			for (int vertices_index = 0; vertices_index < (int)vertices.size(); vertices_index++) {
+
+				ofPoint point(vertices[vertices_index].x + this->font_size * -0.5, vertices[vertices_index].y + this->font_size * 0.5, vertices[vertices_index].z);
+				float noise_value = ofMap(ofNoise(character_index, ofGetFrameNum() * 0.008), 0, 1, this->font_size * -0.5, this->font_size * 0.5);
+
+				if (noise_value < 0) {
+
+					point.x += point.x < noise_value ? -80 : 80;
+				}
+				else {
+
+					point.x += point.x > noise_value ? 80 : -80;
+				}
+
+				ofVertex(point);
 			}
 		}
+
+		ofEndShape();
+		ofPopMatrix();
 	}
 }
 

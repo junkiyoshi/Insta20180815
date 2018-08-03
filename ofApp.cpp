@@ -4,15 +4,10 @@
 void ofApp::setup() {
 
 	ofSetFrameRate(60);
-	ofSetWindowTitle("Insta");
+	ofSetWindowTitle("openFrameworks");
 
-	ofBackground(239);
-	ofSetColor(39);
-	ofNoFill();
-	ofSetLineWidth(2);
-
-	this->font_size = 130;
-	this->font.loadFont("fonts/Kazesawa-Bold.ttf", this->font_size, true, true, true);
+	ofBackground(39);
+	ofEnableDepthTest();
 }
 
 //--------------------------------------------------------------
@@ -23,45 +18,51 @@ void ofApp::update() {
 //--------------------------------------------------------------
 void ofApp::draw() {
 
-	vector<char> characters = { 'A', 'B', 'C', 'D', 'E',
-								'V', 'W', 'X', 'Y', 'Z'};
-	for (int character_index = 0; character_index < characters.size(); character_index++) {
+	this->cam.begin();
 
-		ofPoint location = character_index < 5 ? ofPoint(ofGetWidth() * 0.25, this->font_size * 0.7 + (this->font_size + 3) * character_index) : ofPoint(ofGetWidth() * 0.75, this->font_size * 0.7 + (this->font_size + 3) * (character_index - 5));
-		ofPushMatrix();
-		ofTranslate(location);
+	float radius = 300;
+	int small_radius = 80;
+	int deg_span = 10;
+	int small_deg_span = 10;
 
-		ofPath path = this->font.getCharacterAsPoints(characters[character_index], true, false);
-		vector<ofPolyline> outline = path.getOutline();
+	for (int deg = 0; deg < 360; deg += deg_span) {
 
-		ofBeginShape();
-		for (int outline_index = 0; outline_index < (int)outline.size(); outline_index++) {
+		ofColor color = deg % (deg_span * 2) == 0 ? ofColor(239, 39, 39) : ofColor(39, 39,239);
 
-			if (outline_index != 0) { ofNextContour(true); }
+		int start_small_deg = ofGetFrameNum() * 3 + deg;
+		for (int small_deg = start_small_deg; small_deg < start_small_deg + 360; small_deg += small_deg_span) {
 
-			outline[outline_index] = outline[outline_index].getResampledByCount(180);
-			vector<glm::vec3> vertices = outline[outline_index].getVertices();
-			for (int vertices_index = 0; vertices_index < (int)vertices.size(); vertices_index++) {
+			color.setHsb(ofMap(small_deg, start_small_deg, start_small_deg + 360, 0, 255), 230, 230);
+			ofSetColor(color);
 
-				ofPoint point(vertices[vertices_index].x + this->font_size * -0.5, vertices[vertices_index].y + this->font_size * 0.5, vertices[vertices_index].z);
-				float noise_value = ofMap(ofNoise(character_index, ofGetFrameNum() * 0.008), 0, 1, this->font_size * -0.5, this->font_size * 0.5);
+			ofBeginShape();
 
-				if (noise_value < 0) {
+			ofVertex(this->make_point(radius, small_radius, deg, small_deg));
+			ofVertex(this->make_point(radius, small_radius, deg + deg_span, small_deg));
+			ofVertex(this->make_point(radius, small_radius, deg + deg_span, small_deg + small_deg_span));
+			ofVertex(this->make_point(radius, small_radius, deg, small_deg + small_deg_span));
 
-					point.x += point.x < noise_value ? -80 : 80;
-				}
-				else {
-
-					point.x += point.x > noise_value ? 80 : -80;
-				}
-
-				ofVertex(point);
-			}
+			ofEndShape(true);
 		}
-
-		ofEndShape();
-		ofPopMatrix();
 	}
+
+	this->cam.end();
+}
+
+//--------------------------------------------------------------
+ofPoint ofApp::make_point(float radius, float small_radius, float deg, float small_deg) {
+
+	float x_1 = radius * cos(deg * DEG_TO_RAD);
+	float y_1 = radius * sin(deg * DEG_TO_RAD);
+
+	float x_2 = small_radius * cos(small_deg * DEG_TO_RAD) * cos(deg * DEG_TO_RAD);
+	float y_2 = small_radius * cos(small_deg * DEG_TO_RAD) * sin(deg * DEG_TO_RAD);
+
+	float x = x_1 + x_2;
+	float y = y_1 + y_2;
+	float z = small_radius * sin(small_deg * DEG_TO_RAD);
+
+	return ofPoint(x, y, z);
 }
 
 //--------------------------------------------------------------

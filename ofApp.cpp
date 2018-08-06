@@ -3,66 +3,104 @@
 //--------------------------------------------------------------
 void ofApp::setup() {
 
-	ofSetFrameRate(60);
-	ofSetWindowTitle("openFrameworks");
+	ofSetFrameRate(30);
+	ofSetWindowTitle("Insta");
 
 	ofBackground(39);
-	ofEnableDepthTest();
+	ofSetColor(239);
+	ofSetLineWidth(2);
+
+	this->box2d.init();
+	this->box2d.setGravity(0, 0);
+	this->box2d.createBounds();
+	this->box2d.setFPS(30);
+	this->box2d.registerGrabbing();
+
+	for (int i = 0; i < 128; i++) {
+
+		float radius = 15;
+		auto circle = make_shared<ofxBox2dCircle>();
+		circle->setPhysics(1.0, 0.63, 1.0);
+		circle->setup(this->box2d.getWorld(), ofRandom(ofGetWidth() / 2), ofRandom(ofGetHeight() / 2), radius);
+
+		this->circles.push_back(circle);
+
+		deque<ofPoint> log;
+		this->circles_log.push_back(log);
+	}
+
+	this->force_fields.push_back(ofPoint(ofGetWidth() / 4, ofGetHeight() / 4));
+	this->force_fields.push_back(ofPoint(ofGetWidth() / 4 * 3, ofGetHeight() / 4));
+	this->force_fields.push_back(ofPoint(ofGetWidth() / 4 * 3, ofGetHeight() / 4 * 3));
+	this->force_fields.push_back(ofPoint(ofGetWidth() / 4, ofGetHeight() / 4 * 3));
+
+	this->force_field_radius = 300;
 }
 
 //--------------------------------------------------------------
 void ofApp::update() {
 
+	ofSeedRandom(39);
+
+	for (int i = 0; i < this->circles.size(); i++) {
+
+		shared_ptr<ofxBox2dCircle> circle = this->circles[i];
+		ofPoint point = circle->getPosition();
+
+		for (int field_index = 0; field_index < this->force_fields.size(); field_index++) {
+
+			float distance = point.distance(this->force_fields[field_index]);
+			if (distance < this->force_field_radius) {
+
+				ofPoint p = ofPoint(this->force_field_radius * cos((field_index * 90 + 10) * DEG_TO_RAD), this->force_field_radius * sin((field_index * 90 + 10) * DEG_TO_RAD));
+				circle->addForce(p, ofMap(distance, 0, this->force_field_radius, 0.1, 0.01));
+			}
+		}
+	}
+
+	this->box2d.update();
+
+	for (int i = 0; i < this->circles.size(); i++) {
+
+		this->circles_log[i].push_front(this->circles[i]->getPosition());
+		while (this->circles_log[i].size() > 10) {
+
+			this->circles_log[i].pop_back();
+		}
+	}
 }
 
 //--------------------------------------------------------------
 void ofApp::draw() {
 
-	this->cam.begin();
+	for (int i = 0; i < this->circles.size(); i++) {
 
-	float radius = 300;
-	int small_radius = 80;
-	int deg_span = 10;
-	int small_deg_span = 10;
+		float radius = this->circles[i]->getRadius();
+		ofPoint point = this->circles[i]->getPosition();
+		ofPoint velocity = this->circles[i]->getVelocity();
 
-	for (int deg = 0; deg < 360; deg += deg_span) {
+		ofPushMatrix();
+		ofTranslate(point);
 
-		ofColor color = deg % (deg_span * 2) == 0 ? ofColor(239, 39, 39) : ofColor(39, 39,239);
+		float velocity_deg = atan2f(velocity.y, velocity.x) * RAD_TO_DEG;
+		ofFill();
+		ofBeginShape();
+		for (int deg = velocity_deg; deg < velocity_deg + 270; deg += 120) {
 
-		int start_small_deg = ofGetFrameNum() * 3 + deg;
-		for (int small_deg = start_small_deg; small_deg < start_small_deg + 360; small_deg += small_deg_span) {
-
-			color.setHsb(ofMap(small_deg, start_small_deg, start_small_deg + 360, 0, 255), 230, 230);
-			ofSetColor(color);
-
-			ofBeginShape();
-
-			ofVertex(this->make_point(radius, small_radius, deg, small_deg));
-			ofVertex(this->make_point(radius, small_radius, deg + deg_span, small_deg));
-			ofVertex(this->make_point(radius, small_radius, deg + deg_span, small_deg + small_deg_span));
-			ofVertex(this->make_point(radius, small_radius, deg, small_deg + small_deg_span));
-
-			ofEndShape(true);
+			ofVertex(radius * cos(deg * DEG_TO_RAD), radius * sin(deg * DEG_TO_RAD));
 		}
+		ofEndShape(true);
+
+		ofPopMatrix();
+
+		ofNoFill();
+		ofBeginShape();
+		for (int log_index = 0; log_index < this->circles_log[i].size(); log_index++) {
+
+			ofVertex(this->circles_log[i][log_index]);
+		}
+		ofEndShape(false);
 	}
-
-	this->cam.end();
-}
-
-//--------------------------------------------------------------
-ofPoint ofApp::make_point(float radius, float small_radius, float deg, float small_deg) {
-
-	float x_1 = radius * cos(deg * DEG_TO_RAD);
-	float y_1 = radius * sin(deg * DEG_TO_RAD);
-
-	float x_2 = small_radius * cos(small_deg * DEG_TO_RAD) * cos(deg * DEG_TO_RAD);
-	float y_2 = small_radius * cos(small_deg * DEG_TO_RAD) * sin(deg * DEG_TO_RAD);
-
-	float x = x_1 + x_2;
-	float y = y_1 + y_2;
-	float z = small_radius * sin(small_deg * DEG_TO_RAD);
-
-	return ofPoint(x, y, z);
 }
 
 //--------------------------------------------------------------

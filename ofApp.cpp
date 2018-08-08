@@ -3,103 +3,84 @@
 //--------------------------------------------------------------
 void ofApp::setup() {
 
-	ofSetFrameRate(30);
+	ofSetFrameRate(60);
 	ofSetWindowTitle("Insta");
 
-	ofBackground(39);
-	ofSetColor(239);
-	ofSetLineWidth(2);
+	ofBackground(239);
 
 	this->box2d.init();
-	this->box2d.setGravity(0, 0);
+	this->box2d.enableEvents();
+	this->box2d.setGravity(0, 10);
 	this->box2d.createBounds();
-	this->box2d.setFPS(30);
+	this->box2d.setFPS(60);
 	this->box2d.registerGrabbing();
 
-	for (int i = 0; i < 128; i++) {
-
-		float radius = 15;
-		auto circle = make_shared<ofxBox2dCircle>();
-		circle->setPhysics(1.0, 0.63, 1.0);
-		circle->setup(this->box2d.getWorld(), ofRandom(ofGetWidth() / 2), ofRandom(ofGetHeight() / 2), radius);
-
-		this->circles.push_back(circle);
-
-		deque<ofPoint> log;
-		this->circles_log.push_back(log);
-	}
-
-	this->force_fields.push_back(ofPoint(ofGetWidth() / 4, ofGetHeight() / 4));
-	this->force_fields.push_back(ofPoint(ofGetWidth() / 4 * 3, ofGetHeight() / 4));
-	this->force_fields.push_back(ofPoint(ofGetWidth() / 4 * 3, ofGetHeight() / 4 * 3));
-	this->force_fields.push_back(ofPoint(ofGetWidth() / 4, ofGetHeight() / 4 * 3));
-
-	this->force_field_radius = 300;
+	ofAddListener(box2d.contactStartEvents, this, &ofApp::contactStart);
+	ofAddListener(box2d.contactEndEvents, this, &ofApp::contactEnd);
 }
 
 //--------------------------------------------------------------
 void ofApp::update() {
 
-	ofSeedRandom(39);
+	if (ofGetFrameNum() % 1 == 0) {
 
-	for (int i = 0; i < this->circles.size(); i++) {
+		ofPoint point(ofRandom(ofGetWidth()), ofRandom(ofGetHeight() * 0.1));
+		float radius = ofRandom(10, 15);
+		unique_ptr<Particle> p(new Particle(this->box2d, point, radius));
 
-		shared_ptr<ofxBox2dCircle> circle = this->circles[i];
-		ofPoint point = circle->getPosition();
+		this->particles.push_back(std::move(p));
+	}
 
-		for (int field_index = 0; field_index < this->force_fields.size(); field_index++) {
+	for (int i = this->particles.size() - 1; i >= 0; i--) {
 
-			float distance = point.distance(this->force_fields[field_index]);
-			if (distance < this->force_field_radius) {
+		this->particles[i]->Update();
+		if (this->particles[i]->IsDead()) {
 
-				ofPoint p = ofPoint(this->force_field_radius * cos((field_index * 90 + 10) * DEG_TO_RAD), this->force_field_radius * sin((field_index * 90 + 10) * DEG_TO_RAD));
-				circle->addForce(p, ofMap(distance, 0, this->force_field_radius, 0.1, 0.01));
-			}
+			this->particles.erase(this->particles.begin() + i);
 		}
 	}
 
 	this->box2d.update();
-
-	for (int i = 0; i < this->circles.size(); i++) {
-
-		this->circles_log[i].push_front(this->circles[i]->getPosition());
-		while (this->circles_log[i].size() > 10) {
-
-			this->circles_log[i].pop_back();
-		}
-	}
 }
 
 //--------------------------------------------------------------
 void ofApp::draw() {
 
-	for (int i = 0; i < this->circles.size(); i++) {
+	for (int i = 0; i < this->particles.size(); i++) {
 
-		float radius = this->circles[i]->getRadius();
-		ofPoint point = this->circles[i]->getPosition();
-		ofPoint velocity = this->circles[i]->getVelocity();
+		this->particles[i]->Draw();
+	}
+}
 
-		ofPushMatrix();
-		ofTranslate(point);
+//--------------------------------------------------------------
+void ofApp::contactStart(ofxBox2dContactArgs &e) {
 
-		float velocity_deg = atan2f(velocity.y, velocity.x) * RAD_TO_DEG;
-		ofFill();
-		ofBeginShape();
-		for (int deg = velocity_deg; deg < velocity_deg + 270; deg += 120) {
+	if (e.a != NULL && e.b != NULL) {
 
-			ofVertex(radius * cos(deg * DEG_TO_RAD), radius * sin(deg * DEG_TO_RAD));
+		Particle* p_a = (Particle*)e.a->GetBody()->GetUserData();
+		Particle* p_b = (Particle*)e.b->GetBody()->GetUserData();
+		if (p_a != nullptr && p_b != nullptr) {
+
+			ofPoint p_a_velocity = p_a->GetVelocity();
+			ofPoint p_b_velocity = p_b->GetVelocity();
+			if (p_a_velocity.length() < p_b_velocity.length()) {
+
+				p_a->SetColor(p_b->GetColor());
+			}
+			else {
+
+				p_b->SetColor(p_a->GetColor());
+			}
 		}
-		ofEndShape(true);
+	}
+}
 
-		ofPopMatrix();
+//--------------------------------------------------------------
+void ofApp::contactEnd(ofxBox2dContactArgs &e) {
 
-		ofNoFill();
-		ofBeginShape();
-		for (int log_index = 0; log_index < this->circles_log[i].size(); log_index++) {
+	if (e.a != NULL && e.b != NULL) {
 
-			ofVertex(this->circles_log[i][log_index]);
-		}
-		ofEndShape(false);
+		// do nothing
 	}
 }
 

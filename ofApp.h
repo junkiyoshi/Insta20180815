@@ -2,6 +2,8 @@
 #include "ofMain.h"
 #include "ofxBox2d.h"
 
+#include "Particle.h"
+
 class ofApp : public ofBaseApp {
 
 public:
@@ -21,9 +23,10 @@ public:
 	void dragEvent(ofDragInfo dragInfo) {}
 	void gotMessage(ofMessage msg) {}
 
+	void contactStart(ofxBox2dContactArgs &e);
+	void contactEnd(ofxBox2dContactArgs &e);
+
 	ofxBox2d box2d;
-	vector<shared_ptr<ofxBox2dCircle>> circles;
-	vector<deque<ofPoint>> circles_log;
-	vector<ofPoint> force_fields;
-	int force_field_radius;
+	vector<unique_ptr<Particle>> particles;
+	vector<shared_ptr<ofxBox2dJoint>> joints;
 };

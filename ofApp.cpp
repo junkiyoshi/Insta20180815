@@ -6,81 +6,51 @@ void ofApp::setup() {
 	ofSetFrameRate(60);
 	ofSetWindowTitle("Insta");
 
-	ofBackground(239);
+	ofSetColor(239);
+	ofBackground(39);
+	ofSetBackgroundAuto(false);
+	ofSetLineWidth(3);
 
-	this->box2d.init();
-	this->box2d.enableEvents();
-	this->box2d.setGravity(0, 10);
-	this->box2d.createBounds();
-	this->box2d.setFPS(60);
-	this->box2d.registerGrabbing();
+	string sound_path_list[] = { "sound/pianoC.mp3", "sound/pianoD.mp3", "sound/pianoE.mp3", "sound/pianoF.mp3", "sound/pianoG.mp3", "sound/pianoA.mp3", "sound/pianoB.mp3", "sound/pianoC2.mp3" };
+	for (int i = 0; i < 8; i++) {
 
-	ofAddListener(box2d.contactStartEvents, this, &ofApp::contactStart);
-	ofAddListener(box2d.contactEndEvents, this, &ofApp::contactEnd);
+		ofSoundPlayer sound;
+		sound.load(sound_path_list[i]);
+		sound.setVolume(0.2);
+		sound.setMultiPlay(true);
+
+		this->sounds.push_back(sound);
+	}
 }
 
 //--------------------------------------------------------------
 void ofApp::update() {
 
-	if (ofGetFrameNum() % 1 == 0) {
-
-		ofPoint point(ofRandom(ofGetWidth()), ofRandom(ofGetHeight() * 0.1));
-		float radius = ofRandom(10, 15);
-		unique_ptr<Particle> p(new Particle(this->box2d, point, radius));
-
-		this->particles.push_back(std::move(p));
-	}
-
-	for (int i = this->particles.size() - 1; i >= 0; i--) {
-
-		this->particles[i]->Update();
-		if (this->particles[i]->IsDead()) {
-
-			this->particles.erase(this->particles.begin() + i);
-		}
-	}
-
-	this->box2d.update();
+	ofSoundUpdate();
 }
 
 //--------------------------------------------------------------
 void ofApp::draw() {
 
-	for (int i = 0; i < this->particles.size(); i++) {
+	ofSetColor(39, 64);
+	ofDrawRectangle(0, 0, ofGetWidth(), ofGetHeight());
+	ofSetColor(239);
 
-		this->particles[i]->Draw();
-	}
-}
+	for (int i = 1; i <= 6; i++) {
 
-//--------------------------------------------------------------
-void ofApp::contactStart(ofxBox2dContactArgs &e) {
+		float noise_value = ofNoise(i, ofGetFrameNum() * 0.005);
+		ofPoint point = ofPoint(noise_value * ofGetWidth(), i * 102);
+		ofFill();
+		ofDrawCircle(point, 30);
+		
+		if (ofGetFrameNum() % (i * 15) == 0) {
 
-	if (e.a != NULL && e.b != NULL) {
+			int index = noise_value * 8;
+			this->sounds[index].play();
 
-		Particle* p_a = (Particle*)e.a->GetBody()->GetUserData();
-		Particle* p_b = (Particle*)e.b->GetBody()->GetUserData();
-		if (p_a != nullptr && p_b != nullptr) {
-
-			ofPoint p_a_velocity = p_a->GetVelocity();
-			ofPoint p_b_velocity = p_b->GetVelocity();
-			if (p_a_velocity.length() < p_b_velocity.length()) {
-
-				p_a->SetColor(p_b->GetColor());
-			}
-			else {
-
-				p_b->SetColor(p_a->GetColor());
-			}
+			ofNoFill();
+			ofDrawCircle(point, 50);
 		}
-	}
-}
-
-//--------------------------------------------------------------
-void ofApp::contactEnd(ofxBox2dContactArgs &e) {
-
-	if (e.a != NULL && e.b != NULL) {
-
-		// do nothing
 	}
 }
 

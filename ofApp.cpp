@@ -4,119 +4,53 @@
 void ofApp::setup() {
 
 	ofSetFrameRate(60);
-	ofSetWindowTitle("Insta");
+	ofSetWindowTitle("openframeworks");
 
-	ofBackground(239);
+	ofBackground(0);
 	ofSetLineWidth(3);
-	ofSetCircleResolution(72);
 
-	this->box2d.init();
-	this->box2d.enableEvents();
-	this->box2d.setGravity(0, 10);
-	this->box2d.createBounds();
-	this->box2d.setFPS(60);
-	this->box2d.registerGrabbing();
+	string sound_path_list[] = { "sound/pianoC2.mp3", "sound/pianoB.mp3", "sound/pianoA.mp3", "sound/pianoG.mp3", "sound/pianoF.mp3", "sound/pianoE.mp3", "sound/pianoD.mp3","sound/pianoC.mp3" };
+	for (int i = 0; i < 8; i++) {
 
-	ofAddListener(box2d.contactStartEvents, this, &ofApp::contactStart);
-	ofAddListener(box2d.contactEndEvents, this, &ofApp::contactEnd);
+		ofSoundPlayer sound;
+		sound.load(sound_path_list[i]);
+		sound.setVolume(0.2);
+		sound.setMultiPlay(true);
+		this->sounds.push_back(sound);
 
-	for (int i = 0; i < 3; i++) {
-
-		unique_ptr<Particle> particle(new Particle(this->box2d, ofPoint(i * 240 + 120, i % 2 == 1 ? ofGetHeight() * 0.4 : ofGetHeight() * 0.6), true));
-		this->particles.push_back(std::move(particle));
+		ofColor color;
+		color.setHsb(i * 35, 255, 230);
+		this->sound_color.push_back(color);
 	}
-
 }
 
 //--------------------------------------------------------------
 void ofApp::update() {
 
-	if (ofGetFrameNum() % 45 == 0) {
-
-		unique_ptr<Particle> particle(new Particle(this->box2d, ofPoint(ofRandom(ofGetWidth()), ofGetHeight() * 0.05)));
-		this->particles.push_back(std::move(particle));
-	}
-
-	for (int i = this->particles.size() - 1; i >= 0; i--) {
-
-		this->particles[i]->Update();
-
-		if (this->particles[i]->IsDead()) {
-
-			this->particles.erase(this->particles.begin() + i);
-		}
-	}
-
-	for (int i = this->waves.size() - 1; i >= 0; i--) {
-
-		if (get<WaveFileds::Life>(this->waves[i])++ > 120) {
-
-			this->waves.erase(this->waves.begin() + i);
-		}
-	}
-
-	this->box2d.update();
 	ofSoundUpdate();
 }
 
 //--------------------------------------------------------------
 void ofApp::draw() {
 
-	ofNoFill();
-	for (int i = 0; i < this->waves.size(); i++) {
+	int span = 144;
+	for (int x = 0; x < ofGetWidth(); x += span) {
 
-		ofSetColor(get<WaveFileds::Color>(this->waves[i]));
-		ofDrawCircle(get<WaveFileds::Point>(this->waves[i]), get<WaveFileds::Life>(this->waves[i]));
-	}
+		int noise_value = ofMap(ofNoise(x * 0.0005 + ofGetFrameNum() * 0.008), 0, 1, 0, this->sounds.size());
+		int next_noise_value = ofMap(ofNoise(x * 0.0005 + (ofGetFrameNum() + 1) * 0.008), 0, 1, 0, this->sounds.size());
 
-	for (int i = 0; i < this->particles.size(); i++) {
+		ofFill();
+		ofSetColor(this->sound_color[next_noise_value]);
+		ofDrawRectangle(x, 0, x + span, ofGetHeight());
 
-		this->particles[i]->Draw();
-	}
-}
+		ofNoFill();
+		ofSetColor(239);
+		ofDrawRectangle(x, 0, x + span, ofGetHeight());
 
+		if (noise_value != next_noise_value) {
 
-//--------------------------------------------------------------
-void ofApp::contactStart(ofxBox2dContactArgs &e) {
-
-	if (e.a != NULL && e.b != NULL) {
-
-		if (e.a->GetType() == b2Shape::e_circle && e.b->GetType() == b2Shape::e_circle) {
-
-			Particle* p_a = (Particle*)e.a->GetBody()->GetUserData();
-			Particle* p_b = (Particle*)e.b->GetBody()->GetUserData();
-			if (p_a != nullptr && p_b != nullptr) {
-
-				if (p_a->IsObstruct() && p_b->IsObstruct() == false) {
-
-					p_a->SetColor(p_b->GetColor());
-					p_b->PlaySound();
-
-					tuple<ofPoint, ofColor, float> wave = make_tuple(p_a->GetPoint(), p_b->GetColor(), 80);
-					this->waves.push_back(wave);
-				}
-
-				if (p_b->IsObstruct() && p_a->IsObstruct() == false) {
-
-					p_b->SetColor(p_a->GetColor());
-					p_a->PlaySound();
-
-					tuple<ofPoint, ofColor, float> wave = make_tuple(p_b->GetPoint(), p_a->GetColor(), 80);
-					this->waves.push_back(wave);
-				}
-			}
-
-			return;
+			this->sounds[next_noise_value].play();
 		}
-	}
-}
-
-//--------------------------------------------------------------
-void ofApp::contactEnd(ofxBox2dContactArgs &e) {
-
-	if (e.a != NULL && e.b != NULL) {
-
-		// do nothing
 	}
 }
 
